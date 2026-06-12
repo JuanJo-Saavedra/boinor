@@ -1,0 +1,171 @@
+digraph boinor {
+  rankdir=LR;
+  node [shape=box, style="rounded,filled", fillcolor=lightblue];
+  edge [color=gray];
+  
+  // Clusters
+  subgraph cluster_user {
+    label="Capa de Usuario";
+    style=filled;
+    color=lightgreen;
+    fillcolor=lightgreen;
+    
+    Orbit [label="Orbit\n(scalar.py)", fillcolor=lightyellow];
+    Maneuver [label="Maneuver\n(maneuver.py)", fillcolor=lightyellow];
+    Ephem [label="Ephem\n(ephem.py)", fillcolor=lightyellow];
+    EarthSatellite [label="EarthSatellite\n(earth/__init__.py)", fillcolor=lightyellow];
+    Spacecraft [label="Spacecraft\n(spacecraft/__init__.py)", fillcolor=lightyellow];
+  }
+  
+  subgraph cluster_twobody {
+    label="Capa Twobody";
+    style=filled;
+    color=lightblue;
+    fillcolor=lightblue;
+    
+    BaseState [label="BaseState\n(states.py)", fillcolor=white];
+    ClassicalState [label="ClassicalState\n(states.py)", fillcolor=white];
+    RVState [label="RVState\n(states.py)", fillcolor=white];
+    MEEState [label="ModifiedEquinoctialState\n(states.py)", fillcolor=white];
+    OrbitCreationMixin [label="OrbitCreationMixin\n(creation.py)", fillcolor=white];
+    twobody_elements [label="twobody/elements.py\n(high-level wrappers)", fillcolor=white];
+    twobody_angles [label="twobody/angles.py\n(high-level wrappers)", fillcolor=white];
+    twobody_sampling [label="twobody/sampling.py\nSamplingStrategy\nEpochsArray\nTrueAnomalyBounds\nEpochBounds", fillcolor=white];
+    twobody_mean_elements [label="twobody/mean_elements.py\nget_mean_elements", fillcolor=white];
+    
+    // Propagators
+    subgraph cluster_propagators {
+      label="Propagadores";
+      style=filled;
+      color=lightyellow;
+      fillcolor=lightyellow;
+      
+      FarnocchiaPropagator [label="FarnocchiaPropagator\n(default)"];
+      CowellPropagator [label="CowellPropagator\n(numérico)"];
+      ValladoPropagator [label="ValladoPropagator"];
+      MikkolaPropagator [label="MikkolaPropagator"];
+      MarkleyPropagator [label="MarkleyPropagator"];
+      PimientaPropagator [label="PimientaPropagator"];
+      GoodingPropagator [label="GoodingPropagator"];
+      DanbyPropagator [label="DanbyPropagator"];
+      RecseriesPropagator [label="RecseriesPropagator"];
+    }
+  }
+  
+  subgraph cluster_core {
+    label="Capa Core (numba JIT)";
+    style=filled;
+    color=lightcoral;
+    fillcolor=lightcoral;
+    
+    core_elements [label="core/elements.py\ncoe2rv, rv2coe\ncoe2mee, mee2coe\nmee2rv, rv_pqw\ncoe_rotation_matrix", fillcolor=pink];
+    core_angles [label="core/angles.py\nM_to_E, M_to_F, M_to_D\nE_to_nu, F_to_nu, D_to_nu\nnewton_factory", fillcolor=pink];
+    core_propagation [label="core/propagation/\nfarnocchia, vallado\nmikkola, markley\npimienta, gooding\ndanby, recseries\ncowell, func_twobody", fillcolor=pink];
+    core_perturbations [label="core/perturbations.py\nJ2_perturbation, J3_perturbation\natmospheric_drag\nthird_body, radiation_pressure", fillcolor=pink];
+    core_iod [label="core/iod.py\nizzo, vallado\n_find_xy, _reconstruct\n_householder, _halley", fillcolor=pink];
+    core_maneuver [label="core/maneuver.py\nhohmann, bielliptic\ncorrect_pericenter", fillcolor=pink];
+    core_events [label="core/events.py\neclipse_function\nline_of_sight\nelevation_function", fillcolor=pink];
+    core_flybys [label="core/flybys.py\ncompute_flyby", fillcolor=pink];
+    core_util [label="core/util.py\nrotation_matrix, alinspace\nspherical_to_cartesian\nplanetocentric_to_AltAz", fillcolor=pink];
+  }
+  
+  subgraph cluster_infrastructure {
+    label="Infraestructura";
+    style=filled;
+    color=lightgray;
+    fillcolor=lightgray;
+    
+    Bodies [label="bodies.py\nBody, SolarSystemPlanet\nSun, Earth, Mars...", fillcolor=white];
+    Frames [label="frames/\nPlanes, get_frame\nGCRS, HCRS, ITRS\nEcliptic, Equatorial", fillcolor=white];
+    Constants [label="constants/\nJ2000, GM_*, R_*\nJ2_*, J3_*, M_*", fillcolor=white];
+    Plotting [label="plotting/\nOrbitPlotter\nMatplotlib2D\nPlotly2D", fillcolor=white];
+    _math [label="_math/\nlinalg, special\nivp, interpolate\nintegrate, optimize", fillcolor=white];
+    IOD [label="iod/\nizzo, vallado\nlambert", fillcolor=white];
+    IO [label="io.py\norbit_from_sbdb", fillcolor=white];
+  }
+  
+  // Relaciones de herencia
+  Orbit -> OrbitCreationMixin [style=dashed, label="mixin"];
+  BaseState -> ClassicalState [style=dashed, label="extends"];
+  BaseState -> RVState [style=dashed, label="extends"];
+  BaseState -> MEEState [style=dashed, label="extends"];
+  Bodies -> "SolarSystemPlanet" [style=dashed, label="extends"];
+  
+  // Relaciones Orbit -> Twobody
+  Orbit -> BaseState [label="has-a\nstate"];
+  Orbit -> twobody_elements [label="usa"];
+  Orbit -> twobody_angles [label="usa (indirecto)"];
+  Orbit -> twobody_sampling [label="usa\nto_ephem/sample"];
+  Orbit -> twobody_mean_elements [label="usa (indirecto)"];
+  Orbit -> FarnocchiaPropagator [label="propagate\n(default)"];
+  Orbit -> CowellPropagator [label="propagate\n(con perturbaciones)"];
+  Orbit -> Maneuver [label="apply_maneuver"];
+  Orbit -> Ephem [label="to_ephem"];
+  Orbit -> Bodies [label="attractor"];
+  Orbit -> Frames [label="get_frame\nchange_plane"];
+  
+  // Relaciones Twobody -> Core
+  twobody_elements -> core_elements [label="delega"];
+  twobody_angles -> core_angles [label="delega"];
+  ClassicalState -> core_elements [label="coe2rv\nrv2coe"];
+  RVState -> core_elements [label="rv2coe"];
+  MEEState -> core_elements [label="mee2coe\nmee2rv"];
+  
+  // Propagadores -> Core
+  FarnocchiaPropagator -> core_propagation [label="farnocchia_coe\nfarnocchia_rv"];
+  CowellPropagator -> core_propagation [label="cowell\nfunc_twobody"];
+  ValladoPropagator -> core_propagation [label="vallado"];
+  MikkolaPropagator -> core_propagation [label="mikkola"];
+  MarkleyPropagator -> core_propagation [label="markley"];
+  PimientaPropagator -> core_propagation [label="pimienta"];
+  GoodingPropagator -> core_propagation [label="gooding"];
+  DanbyPropagator -> core_propagation [label="danby"];
+  RecseriesPropagator -> core_propagation [label="recseries"];
+  
+  // Maneuver -> Core
+  Maneuver -> core_maneuver [label="hohmann\nbielliptic\ncorrect_pericenter"];
+  Maneuver -> IOD [label="lambert"];
+  IOD -> core_iod [label="izzo\nvallado"];
+  
+  // EarthSatellite -> Core
+  EarthSatellite -> core_perturbations [label="J2_perturbation"];
+  EarthSatellite -> core_propagation [label="func_twobody"];
+  EarthSatellite -> CowellPropagator [label="propaga"];
+  
+  // Ephem -> Infraestructura
+  Ephem -> Frames [label="transformaciones"];
+  Ephem -> _math [label="interpolate"];
+  
+  // Plotting -> Orbit
+  Plotting -> Orbit [label="plot()"];
+  Plotting -> Ephem [label="plot_ephem()"];
+  Plotting -> Maneuver [label="plot_maneuver()"];
+  Plotting -> Bodies [label="plot_body_orbit()"];
+  Plotting -> Frames [label="proyección"];
+  
+  // I/O
+  IO -> Bodies [label="Sun"];
+  IO -> Orbit [label="from_classical"];
+  IO -> Frames [label="EARTH_ECLIPTIC"];
+  
+  // Core -> Math
+  core_elements -> core_util [label="rotation_matrix"];
+  core_elements -> core_angles [label="E_to_nu, F_to_nu"];
+  core_iod -> _math [label="linalg, special\n(stumpff, hyp2f1)"];
+  core_perturbations -> core_events [label="line_of_sight"];
+  core_events -> core_elements [label="coe_rotation_matrix\nrv2coe"];
+  core_events -> core_util [label="planetocentric_to_AltAz"];
+  core_flybys -> _math [label="linalg"];
+  core_maneuver -> core_elements [label="rv2coe\ncoe_rotation_matrix\nrv_pqw"];
+  
+  // Util -> Core
+  util -> core_util [label="alinspace"];
+  
+  // Bodies -> Constants
+  Bodies -> Constants [label="todos los GM, R, J2, J3..."];
+  
+  // Threebody -> Twobody
+  threebody [label="threebody/\nsoi, flybys\ncr3bp", fillcolor=white];
+  threebody -> twobody_mean_elements [label="get_mean_elements"];
+  Orbit -> threebody [label="laplace_radius\nchange_attractor"];
+}
